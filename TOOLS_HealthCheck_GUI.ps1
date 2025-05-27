@@ -4,20 +4,20 @@ Add-Type -AssemblyName System.Windows.Forms.DataVisualization # For future chart
 
 #region Color Scheme Definition
 $global:colorScheme = @{
-    FormBackground        = [System.Drawing.Color]::FromArgb(245, 245, 245) # Light Gray (almost White Smoke)
-    PanelBackground       = [System.Drawing.Color]::FromArgb(225, 225, 225) # Slightly adjusted gray for button panel
-    OutputBackground      = [System.Drawing.Color]::FromArgb(248, 248, 248) # Very light gray for output, off-white
-    OutputForeground      = [System.Drawing.Color]::FromArgb(30, 30, 30)    # Dark Gray for text
-    ButtonBackground      = [System.Drawing.Color]::FromArgb(0, 120, 215)   # Modern Blue
-    ButtonHoverBackground = [System.Drawing.Color]::FromArgb(0, 100, 185)   # Darker Blue for hover
+    FormBackground        = [System.Drawing.Color]::FromArgb(245, 245, 245)  # Light Gray (almost White Smoke)
+    PanelBackground       = [System.Drawing.Color]::FromArgb(220, 225, 230)  # Light Slate Gray/Cool Gray for button panel
+    OutputBackground      = [System.Drawing.Color]::FromArgb(248, 248, 248)  # Very light gray for output, off-white
+    OutputForeground      = [System.Drawing.Color]::FromArgb(30, 30, 30)     # Dark Gray for text
+    ButtonBackground      = [System.Drawing.Color]::FromArgb(0, 120, 215)    # Modern Blue
+    ButtonHoverBackground = [System.Drawing.Color]::FromArgb(0, 100, 185)    # Darker Blue for hover
     ButtonForeground      = [System.Drawing.Color]::White
-    LabelForeground       = [System.Drawing.Color]::FromArgb(0, 51, 102)    # Dark Blue for labels/headers
-    Title                 = [System.Drawing.Color]::FromArgb(0, 102, 204)   # Blue for titles in output
-    Warning               = [System.Drawing.Color]::FromArgb(255, 153, 0)   # Orange/Amber for warnings
-    Success               = [System.Drawing.Color]::FromArgb(34, 139, 34)   # ForestGreen for success
-    Error                 = [System.Drawing.Color]::FromArgb(205, 0, 0)     # Strong Red for errors
-    Info                  = [System.Drawing.Color]::FromArgb(0, 120, 215)   # Blue for general info
-    DefaultText           = [System.Drawing.Color]::FromArgb(50, 50, 50)    # Default text color for output
+    LabelForeground       = [System.Drawing.Color]::FromArgb(0, 51, 102)     # Dark Blue for labels/headers
+    Title                 = [System.Drawing.Color]::FromArgb(0, 102, 204)    # Blue for titles in output
+    Warning               = [System.Drawing.Color]::FromArgb(255, 153, 0)    # Orange/Amber for warnings
+    Success               = [System.Drawing.Color]::FromArgb(34, 139, 34)    # ForestGreen for success
+    Error                 = [System.Drawing.Color]::FromArgb(205, 0, 0)      # Strong Red for errors
+    Info                  = [System.Drawing.Color]::FromArgb(0, 110, 195)    # Clear, slightly softer blue for general info
+    DefaultText           = [System.Drawing.Color]::FromArgb(50, 50, 50)     # Default text color for output
 }
 #endregion
 #region Global Variables and Helper Functions for GUI
@@ -73,7 +73,7 @@ function Confirm-Action-GUI {
 
 # Administrator Check
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Show-GuiMessage -Message "Vui lòng chạy ứng dụng với quyền ADMINISTRATOR để hoạt động đầy đủ!" -Title "Yêu cầu quyền Administrator" -Icon Error
+    Show-GuiMessage -Message "Ứng dụng này yêu cầu quyền Quản trị viên (Administrator) để thực hiện tất cả các chức năng. Vui lòng khởi động lại ứng dụng với quyền Quản trị viên." -Title "Yêu cầu quyền Quản trị viên" -Icon Error
     exit
 }
 
@@ -473,7 +473,7 @@ function Manage-BackgroundAppsAndProcesses-GUI {
     Write-GuiOutput "DANH SÁCH TOÀN BỘ PHẦN MỀM ĐANG CHẠY NGẦM (Sắp xếp theo CPU):" -Color $global:colorScheme.Info
     Write-GuiOutput ($bgapps | Format-Table -AutoSize | Out-String) -Color $global:colorScheme.DefaultText
     Write-GuiOutput "`nTổng cộng: $($bgapps.Count) tiến trình đang chạy." -Color $global:colorScheme.DefaultText
-    Show-GuiMessage "Để dừng một tiến trình, bạn có thể sử dụng Task Manager hoặc một công cụ quản lý tiến trình chuyên dụng. Việc tích hợp chức năng dừng vào GUI này cần phát triển thêm."
+    Show-GuiMessage -Message "Để dừng một tiến trình, bạn có thể sử dụng Task Manager (Trình quản lý Tác vụ) của Windows hoặc các công cụ chuyên dụng khác. Chức năng dừng tiến trình trực tiếp từ công cụ này đang được xem xét phát triển." -Title "Thông tin Quản lý Tiến trình" -Icon Information
 }
 
 function Reset-Network-GUI {
@@ -612,10 +612,89 @@ function Check-DriverErrors-GUI {
     try {
         $errorDrivers = Get-CimInstance Win32_PnPEntity | Where-Object { $_.Status -ne "OK" -or $_.ConfigManagerErrorCode -ne 0 }
         if ($errorDrivers) {
-            Write-GuiOutput "Các driver bị lỗi hoặc gặp sự cố:" -Color $global:colorScheme.Warning
-            Write-GuiOutput ($errorDrivers | Select-Object Name, DeviceID, Status, ConfigManagerErrorCode | Format-Table -AutoSize | Out-String) -Color $global:colorScheme.DefaultText
+            Write-GuiOutput "Các driver bị lỗi hoặc gặp sự cố (PNPDeviceID là InstanceID dùng để gỡ cài đặt):" -Color $global:colorScheme.Warning
+            Write-GuiOutput ($errorDrivers | Select-Object Name, DeviceID, Status, ConfigManagerErrorCode, PNPDeviceID | Format-Table -AutoSize -Wrap | Out-String) -Color $global:colorScheme.DefaultText
         } else {
             Write-GuiOutput "Tất cả driver đều đang hoạt động bình thường!" -Color $global:colorScheme.Success
+        }
+    } catch {
+        Write-GuiOutput "Lỗi khi kiểm tra driver: $($_.Exception.Message)" -Color $global:colorScheme.Error
+    }
+}
+
+function Remove-ProblematicDrivers-GUI {
+    Clear-GuiOutput
+    Write-GuiOutput "------ GỠ BỎ DRIVER LỖI & HIỂN THỊ DRIVER DƯ THỪA ------" -Color $global:colorScheme.Title -Bold $true
+    Write-GuiOutput "LƯU Ý: Việc gỡ bỏ driver có thể gây ra sự cố nếu không cẩn thận. Hãy chắc chắn bạn biết mình đang làm gì." -Color $global:colorScheme.Warning -Bold $true
+    Write-GuiOutput "Chức năng này sẽ cố gắng gỡ bỏ các driver đang báo lỗi và hiển thị thông tin về driver của thiết bị không còn kết nối." -Color $global:colorScheme.Info
+
+    $mainForm.Cursor = [System.Windows.Forms.Cursors]::WaitCursor
+    try {
+        $errorDrivers = Get-CimInstance Win32_PnPEntity | Where-Object { $_.Status -ne "OK" -or $_.ConfigManagerErrorCode -ne 0 }
+        
+        if ($errorDrivers) {
+            Write-GuiOutput "`nCác driver đang báo lỗi hoặc gặp sự cố:" -Color $global:colorScheme.Warning
+            Write-GuiOutput ($errorDrivers | Select-Object Name, DeviceID, Status, ConfigManagerErrorCode, PNPDeviceID | Format-Table -AutoSize -Wrap | Out-String) -Color $global:colorScheme.DefaultText
+            
+            if (Confirm-Action-GUI -Message "Bạn có muốn thử gỡ bỏ các driver ĐANG BÁO LỖI được liệt kê ở trên không? (HÀNH ĐỘNG NÀY KHÔNG THỂ HOÀN TÁC và có thể yêu cầu khởi động lại máy tính)") {
+                Write-GuiOutput "`nĐang tiến hành gỡ bỏ driver đang báo lỗi..." -Color $global:colorScheme.Info
+                $driversToUninstall = $errorDrivers | Select-Object -ExpandProperty PNPDeviceID # PNPDeviceID is the InstanceID
+                
+                if (-not (Get-Command Uninstall-PnpDevice -ErrorAction SilentlyContinue)) {
+                    Write-GuiOutput "Lỗi: Lệnh 'Uninstall-PnpDevice' không khả dụng. Không thể tự động gỡ bỏ driver." -Color $global:colorScheme.Error
+                    Write-GuiOutput "Bạn có thể cần cài đặt/cập nhật module PnpDevice (thường có sẵn trên Windows 10+) hoặc gỡ bỏ thủ công qua Device Manager." -Color $global:colorScheme.Warning
+                    # Early exit from this part of the function if command not found
+                } else {
+                    $rebootNeeded = $false
+                    foreach ($pnpDeviceID_toRemove in $driversToUninstall) {
+                        if ([string]::IsNullOrWhiteSpace($pnpDeviceID_toRemove)) {
+                            Write-GuiOutput "Bỏ qua driver với PNPDeviceID trống." -Color $global:colorScheme.Warning
+                            continue
+                        }
+                        Write-GuiOutput "  Đang thử gỡ bỏ driver với PNPDeviceID: $pnpDeviceID_toRemove" -Color $global:colorScheme.DefaultText
+                        try {
+                            $pnpDevice = Get-PnpDevice -InstanceId $pnpDeviceID_toRemove -ErrorAction Stop
+                            if ($pnpDevice) {
+                                Uninstall-PnpDevice -InstanceId $pnpDevice.InstanceId -Force -Confirm:$false -ErrorAction Stop
+                                Write-GuiOutput "    Đã yêu cầu gỡ bỏ: $($pnpDevice.FriendlyName) ($pnpDeviceID_toRemove)" -Color $global:colorScheme.Success
+                                $rebootNeeded = $true 
+                            } else {
+                                Write-GuiOutput "    Không tìm thấy PnP Device với ID: $pnpDeviceID_toRemove (có thể đã được gỡ bỏ hoặc ID không hợp lệ)" -Color $global:colorScheme.Warning
+                            }
+                        } catch {
+                            Write-GuiOutput "    Lỗi khi gỡ bỏ driver ${pnpDeviceID_toRemove}: $($_.Exception.Message)" -Color $global:colorScheme.Error
+                        }
+                    }
+                    Write-GuiOutput "`nHoàn tất quá trình yêu cầu gỡ bỏ driver." -Color $global:colorScheme.Info
+                    if ($rebootNeeded) {
+                        Write-GuiOutput "Một số thay đổi có thể yêu cầu KHỞI ĐỘNG LẠI MÁY TÍNH để có hiệu lực hoàn toàn." -Color $global:colorScheme.Warning -Bold $true
+                    }
+                }
+            } else {
+                Write-GuiOutput "Hành động gỡ bỏ driver đang báo lỗi đã bị hủy." -Color $global:colorScheme.Warning
+            }
+        } else {
+            Write-GuiOutput "`nKhông tìm thấy driver nào đang báo lỗi." -Color $global:colorScheme.Success
+        }
+
+        Write-GuiOutput "`n--- Thông tin về thiết bị không còn kết nối (Non-Present/Ghost Devices) ---" -Color $global:colorScheme.Title
+        Write-GuiOutput "Lưu ý: Việc gỡ bỏ các thiết bị này cần cẩn thận. Chúng thường là các thiết bị đã từng được kết nối." -Color $global:colorScheme.Info
+        if (Get-Command Get-PnpDevice -ErrorAction SilentlyContinue) {
+            try {
+                $nonPresentDevices = Get-PnpDevice | Where-Object { -not $_.Present -and ($_.Status -ne 'OK' -or $_.ConfigManagerErrorCode -ne 0) } # Show non-present devices that also might have issues or are simply not connected
+                if ($nonPresentDevices) {
+                    Write-GuiOutput "Các thiết bị không còn kết nối (hoặc bị vô hiệu hóa/lỗi và không hiện diện):" -Color $global:colorScheme.Warning
+                    Write-GuiOutput ($nonPresentDevices | Select-Object FriendlyName, InstanceId, Status, Class, Present, ConfigManagerErrorCode | Format-Table -AutoSize -Wrap | Out-String) -Color $global:colorScheme.DefaultText
+                    Write-GuiOutput "Để gỡ bỏ các thiết bị này, bạn có thể mở Device Manager (Chạy 'devmgmt.msc'), chọn 'View' -> 'Show hidden devices'," -Color $global:colorScheme.Info
+                    Write-GuiOutput "sau đó tìm các thiết bị bị mờ (ghosted), chuột phải và chọn 'Uninstall device'. Hãy cẩn thận!" -Color $global:colorScheme.Info
+                } else {
+                    Write-GuiOutput "Không tìm thấy thiết bị nào được đánh dấu là không còn kết nối và có vấn đề, hoặc tất cả đều ổn." -Color $global:colorScheme.Success
+                }
+            } catch {
+                 Write-GuiOutput "Lỗi khi truy vấn thiết bị non-present: $($_.Exception.Message)" -Color $global:colorScheme.Error
+            }
+        } else {
+            Write-GuiOutput "Lệnh 'Get-PnpDevice' không khả dụng. Không thể liệt kê thiết bị non-present." -Color $global:colorScheme.Warning
         }
     } catch {
         Write-GuiOutput "Lỗi khi kiểm tra driver: $($_.Exception.Message)" -Color $global:colorScheme.Error
@@ -677,7 +756,10 @@ function Update-Software-GUI {
     Clear-GuiOutput
     Write-GuiOutput "------ CẬP NHẬT PHẦN MỀM (qua winget) ------" -Color $global:colorScheme.Title -Bold $true
     if (!(Get-Command winget -ErrorAction SilentlyContinue)) {
-        Write-GuiOutput "Winget chưa được cài đặt! Vui lòng cài đặt hoặc cập nhật Windows." -Color $global:colorScheme.Warning
+        Write-GuiOutput "Winget (Trình quản lý Gói Windows) chưa được cài đặt hoặc không tìm thấy trong PATH." -Color $global:colorScheme.Error
+        Show-GuiMessage -Message "Winget không được tìm thấy. Winget thường được phân phối qua 'App Installer' từ Microsoft Store. Vui lòng đảm bảo 'App Installer' đã được cài đặt và cập nhật từ Microsoft Store. Bạn cũng có thể cần khởi động lại máy tính sau khi cài đặt/cập nhật App Installer." -Title "Winget không khả dụng" -Icon Warning
+        Write-GuiOutput "Vui lòng cài đặt/cập nhật 'App Installer' từ Microsoft Store và thử lại." -Color $global:colorScheme.Warning
+        Write-GuiOutput "Nếu đã cài đặt, hãy đảm bảo đường dẫn của winget.exe nằm trong biến môi trường PATH của hệ thống." -Color $global:colorScheme.Info
         return
     }
     if (Confirm-Action-GUI -Message "Bạn có chắc chắn muốn tìm và cài đặt các bản cập nhật phần mềm qua winget? (Sẽ mở cửa sổ console riêng)") {
@@ -870,6 +952,46 @@ function Open-WindowsSettings-GUI {
 
 #endregion
 
+#region Firewall Functions
+function Disable-Firewall-GUI {
+    Clear-GuiOutput
+    Write-GuiOutput "------ TẮT TƯỜNG LỬA WINDOWS ------" -Color $global:colorScheme.Title -Bold $true
+    if (Confirm-Action-GUI -Message "CẢNH BÁO: Tắt tường lửa có thể khiến máy tính của bạn dễ bị tấn công hơn. Bạn có chắc chắn muốn tắt tường lửa cho tất cả các profile (Domain, Private, Public) không?" -Title "Xác nhận Tắt Tường lửa" -Icon Warning) {
+        try {
+            Write-GuiOutput "Đang tắt tường lửa..." -Color $global:colorScheme.Info
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled False -ErrorAction Stop
+            Write-GuiOutput "Tường lửa Windows đã được tắt cho tất cả các profile." -Color $global:colorScheme.Success
+            Show-GuiMessage -Message "Tường lửa Windows đã được tắt. Hãy cân nhắc bật lại sớm nhất có thể để đảm bảo an toàn." -Title "Tường lửa đã tắt" -Icon Warning
+        } catch {
+            Write-GuiOutput "Lỗi khi tắt tường lửa: $($_.Exception.Message)" -Color $global:colorScheme.Error
+            Show-GuiMessage -Message "Không thể tắt tường lửa. Lỗi: $($_.Exception.Message)" -Title "Lỗi Tắt Tường lửa" -Icon Error
+        }
+    } else {
+        Write-GuiOutput "Hành động tắt tường lửa đã bị hủy." -Color $global:colorScheme.Warning
+    }
+}
+
+function Enable-Firewall-GUI {
+    Clear-GuiOutput
+    Write-GuiOutput "------ BẬT TƯỜNG LỬA WINDOWS ------" -Color $global:colorScheme.Title -Bold $true
+    if (Confirm-Action-GUI -Message "Bạn có chắc chắn muốn bật tường lửa Windows cho tất cả các profile (Domain, Private, Public) không?") {
+        try {
+            Write-GuiOutput "Đang bật tường lửa..." -Color $global:colorScheme.Info
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            Write-GuiOutput "Tường lửa Windows đã được bật cho tất cả các profile." -Color $global:colorScheme.Success
+            Show-GuiMessage -Message "Tường lửa Windows đã được bật." -Title "Tường lửa đã bật" -Icon Information
+        } catch {
+            Write-GuiOutput "Lỗi khi bật tường lửa: $($_.Exception.Message)" -Color $global:colorScheme.Error
+            Show-GuiMessage -Message "Không thể bật tường lửa. Lỗi: $($_.Exception.Message)" -Title "Lỗi Bật Tường lửa" -Icon Error
+        }
+    } else {
+        Write-GuiOutput "Hành động bật tường lửa đã bị hủy." -Color $global:colorScheme.Warning
+    }
+}
+
+#endregion
+
+
 #region GUI Setup
 
 $mainForm = New-Object System.Windows.Forms.Form
@@ -1001,24 +1123,27 @@ Add-ButtonToCurrentGroup "12. Reset kết nối Internet" { Reset-Network-GUI }
 Add-ButtonToCurrentGroup "13. Xóa file tạm, dọn dẹp" { Clear-TempFiles-GUI }
 Add-ButtonToCurrentGroup "14. SFC Scan (Kiểm tra file hệ thống)" { Run-SFCScan-GUI }
 Add-ButtonToCurrentGroup "15. Tạo điểm khôi phục" { Create-RestorePoint-GUI }
-Add-ButtonToCurrentGroup "16. Kiểm tra driver bị lỗi" { Check-DriverErrors-GUI }
-Add-ButtonToCurrentGroup "17. Cập nhật driver tự động" { Update-Drivers-GUI }
-Add-ButtonToCurrentGroup "18. Cập nhật phần mềm (winget)" { Update-Software-GUI }
-Add-ButtonToCurrentGroup "19. Cập nhật Windows tự động" { Update-Windows-GUI }
-Add-ButtonToCurrentGroup "20. Mở Disk Cleanup" { Open-DiskCleanup-GUI }
-Add-ButtonToCurrentGroup "21. Xóa hàng đợi In" { Clear-PrintSpooler-GUI }
+Add-ButtonToCurrentGroup "16. Kiểm tra Driver Bị Lỗi" { Check-DriverErrors-GUI }
+Add-ButtonToCurrentGroup "17. Gỡ bỏ Driver Lỗi/Dư thừa" { Remove-ProblematicDrivers-GUI } # Nút mới
+Add-ButtonToCurrentGroup "18. Cập nhật driver tự động" { Update-Drivers-GUI }
+Add-ButtonToCurrentGroup "19. Cập nhật phần mềm (winget)" { Update-Software-GUI }
+Add-ButtonToCurrentGroup "20. Cập nhật Windows tự động" { Update-Windows-GUI }
+Add-ButtonToCurrentGroup "21. Mở Disk Cleanup" { Open-DiskCleanup-GUI }
+Add-ButtonToCurrentGroup "22. Xóa hàng đợi In" { Clear-PrintSpooler-GUI } # Sửa số thứ tự nếu cần
+Add-ButtonToCurrentGroup "23. Tắt Tường lửa Windows" { Disable-Firewall-GUI }
+Add-ButtonToCurrentGroup "24. Bật Tường lửa Windows" { Enable-Firewall-GUI }
 
 Start-NewMenuGroup "CÔNG CỤ HỆ THỐNG"
-Add-ButtonToCurrentGroup "22. Mở Device Manager" { Open-DeviceManager-GUI }
-Add-ButtonToCurrentGroup "23. Mở System Configuration" { Open-SystemConfiguration-GUI }
-Add-ButtonToCurrentGroup "24. Mở Task Scheduler" { Open-TaskScheduler-GUI }
-Add-ButtonToCurrentGroup "25. Mở Event Viewer" { Open-EventViewer-GUI }
-Add-ButtonToCurrentGroup "26. Mở Registry Editor (Cảnh báo!)" { Open-RegistryEditor-GUI }
-Add-ButtonToCurrentGroup "27. Mở Control Panel" { Open-ControlPanel-GUI }
-Add-ButtonToCurrentGroup "28. Mở Windows Settings" { Open-WindowsSettings-GUI }
+Add-ButtonToCurrentGroup "25. Mở Device Manager" { Open-DeviceManager-GUI }
+Add-ButtonToCurrentGroup "26. Mở System Configuration" { Open-SystemConfiguration-GUI }
+Add-ButtonToCurrentGroup "27. Mở Task Scheduler" { Open-TaskScheduler-GUI }
+Add-ButtonToCurrentGroup "28. Mở Event Viewer" { Open-EventViewer-GUI }
+Add-ButtonToCurrentGroup "29. Mở Registry Editor (Cảnh báo!)" { Open-RegistryEditor-GUI }
+Add-ButtonToCurrentGroup "30. Mở Control Panel" { Open-ControlPanel-GUI }
+Add-ButtonToCurrentGroup "31. Mở Windows Settings" { Open-WindowsSettings-GUI }
 
 Start-NewMenuGroup "KHÁC"
-Add-ButtonToCurrentGroup "29. Thoát" { $mainForm.Close() }
+Add-ButtonToCurrentGroup "32. Thoát" { $mainForm.Close() }
 
 FinalizeLastMenuGroup # Finalize the layout of the last group
 
